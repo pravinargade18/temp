@@ -1,0 +1,375 @@
+
+Pravin Argade
+8:17 AM (1 minute ago)
+
+to ARGADE
+
+package com.postbook;
+
+import java.sql.SQLException;
+import java.util.List;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+
+import com.model.Post;
+import com.model.Status;
+
+import dao.PostsDAOImpl;
+import dao.Tweet;
+import dao.TweetDAOImpl;
+import dao.User;
+import dao.UserDAOImpl;
+
+@Path("twitter")
+public class MyResource {
+
+UserDAOImpl userDAOImpl = new UserDAOImpl();
+TweetDAOImpl tweetDAOImpl = new TweetDAOImpl();
+
+
+@Path("user/register")
+@POST
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Status signUp(User user) throws SQLException {
+return userDAOImpl.signUp(user);
+}
+
+@Path("user/login")
+@POST
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public User signIn(User user) throws SQLException {
+return userDAOImpl.signIn(user);
+}
+
+@Path("user/view-profile")
+@POST
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public User viewProfile(User user) throws SQLException {
+return userDAOImpl.viewProfile(user);
+}
+
+
+@Path("user/tweet/add-tweet")
+@POST
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Status addTweet(Tweet tweet) throws SQLException {
+return tweetDAOImpl.addTweet(tweet);
+}
+
+
+@Path("user/tweets/{userId}")
+@GET
+@Produces(MediaType.APPLICATION_JSON)
+public List<Tweet> viewMyTweets(@PathParam("userId") int userId) throws SQLException {
+   return tweetDAOImpl.viewMyTweets(userId);
+}
+
+//
+// @Path("posts/add")
+// @POST
+// @Consumes(MediaType.APPLICATION_JSON)
+// @Produces(MediaType.APPLICATION_JSON)
+// public Post addPost(Post post) {
+// return impl.addPost(post);
+// }
+//
+@Path("user/tweets/update-tweet")
+@PUT
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public  Status updateTweet(Tweet tweet) throws SQLException {
+return tweetDAOImpl.updateTweet(tweet);
+}
+//
+@Path("user/tweets/delete/{id}")
+@DELETE
+@Produces(MediaType.APPLICATION_JSON)
+public Status deletePost(@PathParam("id") int id) throws SQLException {
+return tweetDAOImpl.deleteTweet(id);
+}
+
+
+@Path("tweets/all")
+@GET
+@Produces(MediaType.APPLICATION_JSON)
+public List<Tweet> viewAllTweets() throws SQLException {
+   return tweetDAOImpl.viewAllTweets();
+}
+
+//
+}
+
+
+
+
+
+
+
+
+
+
+package dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.model.Status;
+
+public class TweetDAOImpl implements TweetDAO {
+
+    private Connection connection;
+
+    public TweetDAOImpl() {
+        connection = DBUtil.getConnection();
+    }
+
+    @Override
+    public Status addTweet(Tweet tweet) throws SQLException {
+    Status s = new Status();
+int res = -1;
+        String query = "INSERT INTO tweet (t_id,t_body, u_id,t_likes) VALUES (?,?,?,?)";
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+        pst.setInt(1, tweet.getTweetId());
+            pst.setString(2, tweet.getTweetBody());
+            pst.setInt(3, tweet.getUserId());
+            pst.setInt(4, tweet.getLikes());
+           
+            res = pst.executeUpdate();
+            s.setQueryStatus((res == 1) ? true : false);
+            return s;
+        }
+    }
+
+    @Override
+    public List<Tweet> viewMyTweets(int userId) throws SQLException {
+        List<Tweet> tweetList = new ArrayList<>();
+        String query = "SELECT * FROM tweet WHERE u_id = ?";
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            pst.setInt(1, userId);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    Tweet tweet = new Tweet(rs.getInt("t_id"),rs.getString("t_body"),rs.getInt("u_id"),rs.getInt("t_likes"));
+
+                    tweetList.add(tweet);
+                }
+                return tweetList;
+            }
+        }
+    }
+
+    @Override
+    public Status updateTweet(Tweet tweet) throws SQLException {
+    Status s = new Status();
+int res = -1;
+        String query = "UPDATE tweet SET t_body=? WHERE t_id=?";
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            pst.setString(1, tweet.getTweetBody());
+            pst.setInt(2, tweet.getTweetId());
+
+            res = pst.executeUpdate();
+            s.setQueryStatus((res == 1) ? true : false);
+            return s;
+        }
+    }
+
+    @Override
+    public Status deleteTweet(int tId) throws SQLException {
+    Status s = new Status();
+int res = -1;
+        String query = "DELETE FROM tweet WHERE t_id=?";
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            pst.setInt(1, tId);
+
+            res = pst.executeUpdate();
+            s.setQueryStatus((res == 1) ? true : false);
+            return s;
+        }
+    }
+
+    @Override
+    public List<Tweet> viewAllTweets() throws SQLException {
+        List<Tweet> tweetList = new ArrayList<>();
+        String query = "SELECT t.t_id, t.t_body, t.u_id, t.t_likes, u.u_name, u.u_email, u.u_bio, u.u_avatar " +
+                "FROM \"TWEET\" t " +
+                "JOIN \"USER\" u ON t.u_id = u.u_id";
+
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    System.out.println("User ID: " + rs.getInt("u_id"));
+                    System.out.println("User Avatar: " + rs.getString("u_avatar"));
+                    System.out.println("User Name: " + rs.getString("u_name"));
+                    System.out.println("Tweet ID: " + rs.getInt("t_id"));
+                    System.out.println("Tweet Body: " + rs.getString("t_body"));
+
+                    System.out.println("----------------------------");
+
+//                  
+                }
+                return tweetList;
+            }
+        }
+    }
+}
+
+
+package dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import com.model.Status;
+
+public class UserDAOImpl implements UserDAO {
+
+    private Connection connection;
+
+    public UserDAOImpl() {
+        this.connection = DBUtil.getConnection();
+    }
+
+    @Override
+    public Status signUp(User user) throws SQLException {
+    Status s = new Status();
+int res = -1;
+    String query = "INSERT INTO \"USER\" (u_id,u_name, u_email, u_password, u_bio, u_avatar) VALUES (?, ?, ?, ?, ?, ?)";
+
+
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+        pst.setInt(1, user.getUserId());
+            pst.setString(2, user.getUserName());
+            pst.setString(3, user.getUserEmail());
+            pst.setString(4, user.getUserPassword());
+            pst.setString(5, user.getUserBio());
+            pst.setString(6, user.getUserAvatar());
+
+            res = pst.executeUpdate();
+            System.out.println("User registration successful!");
+            s.setQueryStatus((res == 1) ? true : false);
+            return s;
+           
+        }
+    }
+
+    @Override
+    public User signIn(User user) throws SQLException {
+    String query = "SELECT * FROM `user` WHERE u_email = ? AND u_password = ?";
+    User signedInUser = null;
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            pst.setString(1, user.getUserEmail());
+            pst.setString(2, user.getUserPassword());
+
+            try (ResultSet rs = pst.executeQuery()) {
+            if (rs.next()) {
+            signedInUser = new User(rs.getInt("u_id"),rs.getString("u_name"),rs.getString("u_email"),rs.getString("u_password"),rs.getString("u_bio"),rs.getString("u_avatar"));
+                   
+                    return signedInUser;
+                } else {
+                    return null;
+                }
+            }
+        }
+    }
+
+    @Override
+    public User viewProfile(User user) throws SQLException {
+        String query = "SELECT * FROM `user` WHERE u_id = ?";
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            pst.setInt(1, user.getUserId());
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    User newUser = new User(rs.getInt("u_id"),rs.getString("u_name"),rs.getString("u_email"),rs.getString("u_password"),rs.getString("u_bio"),rs.getString("u_avatar"));
+       
+                    return newUser;
+                }
+                return null;
+            }
+        }
+    }
+
+    @Override
+    public int updateProfile(User user) throws SQLException {
+        String query = "UPDATE `user` SET u_name=?, u_email=?, u_password=?, u_bio=?, u_avatar=? WHERE u_id=?";
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            pst.setString(1, user.getUserName());
+            pst.setString(2, user.getUserEmail());
+            pst.setString(3, user.getUserPassword());
+            pst.setString(4, user.getUserBio());
+            pst.setString(5, user.getUserAvatar());
+            pst.setInt(6, user.getUserId());
+
+            int res = pst.executeUpdate();
+           
+            return res;
+        }
+    }
+
+   
+}
+
+
+Pravin Argade
+8:19 AM (0 minutes ago)
+
+to ARGADE
+
+package dao;
+
+import java.sql.SQLException;
+import java.util.List;
+
+import com.model.Status;
+
+public interface UserDAO {
+
+Status signUp(User user) throws SQLException;
+
+    User signIn(User user) throws SQLException;
+
+    User viewProfile(User user) throws SQLException;
+
+    int updateProfile(User user) throws SQLException;
+
+}
+
+
+package dao;
+
+import java.sql.SQLException;
+import java.util.List;
+
+import com.model.Status;
+
+public interface TweetDAO {
+
+Status addTweet(Tweet tweet) throws SQLException;
+
+List<Tweet> viewMyTweets(int u_id) throws SQLException;
+
+Status updateTweet(Tweet tweet) throws SQLException;
+
+Status deleteTweet(int t_id) throws SQLException;
+
+List<Tweet> viewAllTweets() throws SQLException;
+
+}
